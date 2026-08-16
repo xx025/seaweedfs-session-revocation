@@ -242,6 +242,11 @@ func (iam *IdentityAccessManagement) verifyV4Signature(r *http.Request, shouldCh
 		if errCode != s3err.ErrNone {
 			return nil, nil, "", nil, errCode
 		}
+		// Preserve the validated session token for the downstream IAM policy
+		// check. Without this, the request is treated as a static access key
+		// after authentication and session-level controls such as revocation
+		// are skipped.
+		identity.SessionToken = sessionToken
 	} else {
 		// 3. Lookup user and credentials
 		var found bool

@@ -109,6 +109,7 @@ type Identity struct {
 	Actions      []Action
 	PolicyNames  []string               // Attached IAM policy names
 	PrincipalArn string                 // ARN for IAM authorization (e.g., "arn:aws:iam::account-id:user/username")
+	SessionToken string                 // Validated STS session token for IAM authorization and revocation checks
 	Disabled     bool                   // User status: false = enabled (default), true = disabled
 	Claims       map[string]interface{} // JWT claims for policy substitution
 	IsStatic     bool                   // Whether identity was loaded from static config (immutable)
