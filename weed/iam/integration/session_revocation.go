@@ -16,6 +16,8 @@ import (
 	"github.com/seaweedfs/seaweedfs/weed/pb"
 	"github.com/seaweedfs/seaweedfs/weed/pb/filer_pb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // RevocationEntry is one row in the revocation list. ExpiresAt is set to the
@@ -180,7 +182,7 @@ func (f *FilerSessionRevocationStore) IsRevoked(ctx context.Context, filerAddres
 			Name:      f.fileName(jti),
 		})
 		if err != nil {
-			if strings.Contains(err.Error(), "not found") || strings.Contains(err.Error(), "no such") {
+			if isFilerNotFound(err) {
 				return nil
 			}
 			return err
@@ -189,6 +191,24 @@ func (f *FilerSessionRevocationStore) IsRevoked(ctx context.Context, filerAddres
 		return nil
 	})
 	return revoked, err
+}
+
+// isFilerNotFound classifies a missing revocation entry as a cache miss, not
+// a store failure. Filer returns missing entries as a structured gRPC
+// codes.NotFound status, whose text is not guaranteed to contain "not found".
+// Keep the legacy text checks for compatibility with older filer clients that
+// returned unstructured errors.
+func isFilerNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, filer_pb.ErrNotFound) || status.Code(err) == codes.NotFound {
+		return true
+	}
+	message := strings.ToLower(err.Error())
+	return strings.Contains(message, "not found") ||
+		strings.Contains(message, "no such") ||
+		strings.Contains(message, "no entry is found")
 }
 
 func (f *FilerSessionRevocationStore) Purge(ctx context.Context, filerAddress string, before time.Time) (int, error) {

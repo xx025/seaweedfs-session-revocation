@@ -2,8 +2,13 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
+
+	"github.com/seaweedfs/seaweedfs/weed/pb/filer_pb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestMemoryRevocationStoreCRUD(t *testing.T) {
@@ -90,5 +95,28 @@ func TestIAMManagerRevocationFlow(t *testing.T) {
 	}
 	if !revoked {
 		t.Fatal("expected revoked")
+	}
+}
+
+func TestIsFilerNotFound(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{name: "nil", err: nil, want: false},
+		{name: "filer sentinel", err: filer_pb.ErrNotFound, want: true},
+		{name: "wrapped filer sentinel", err: errors.New("filer: no entry is found in filer store"), want: true},
+		{name: "grpc not found", err: status.Error(codes.NotFound, filer_pb.ErrNotFound.Error()), want: true},
+		{name: "grpc internal", err: status.Error(codes.Internal, "filer unavailable"), want: false},
+		{name: "ordinary error", err: errors.New("connection refused"), want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isFilerNotFound(tt.err); got != tt.want {
+				t.Fatalf("isFilerNotFound(%v) = %v, want %v", tt.err, got, tt.want)
+			}
+		})
 	}
 }
