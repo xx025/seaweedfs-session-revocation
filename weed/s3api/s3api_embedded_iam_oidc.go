@@ -23,6 +23,7 @@ const (
 	actionUpdateOpenIDConnectProviderThumbprint   = "UpdateOpenIDConnectProviderThumbprint"
 	actionTagOpenIDConnectProvider                = "TagOpenIDConnectProvider"
 	actionUntagOpenIDConnectProvider              = "UntagOpenIDConnectProvider"
+	actionRevokeSession                           = "RevokeSession"
 )
 
 // isOIDCProviderAction reports whether an action belongs to the OIDC provider

@@ -13,6 +13,13 @@ type CommonResponse struct {
 	} `xml:"ResponseMetadata"`
 }
 
+// RevokeSessionResponse is the response for the SeaweedFS-specific
+// RevokeSession IAM action.
+type RevokeSessionResponse struct {
+	XMLName xml.Name `xml:"https://iam.seaweedfs.com/doc/2010-05-08/ RevokeSessionResponse"`
+	CommonResponse
+}
+
 // IAMTag mirrors AWS IAM's Tag list element with the Key/Value pair shape.
 type IAMTag struct {
 	Key   string `xml:"Key"`

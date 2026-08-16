@@ -1093,11 +1093,12 @@ func (s3a *S3ApiServer) registerRouter(router *mux.Router) {
 // loadIAMManagerFromConfig loads the advanced IAM manager from configuration file
 func loadIAMManagerFromConfig(configPath string, filerAddressProvider func() string, getFilerSigningKey func() string) (*integration.IAMManager, error) {
 	var configRoot struct {
-		STS       *sts.STSConfig                `json:"sts"`
-		Policy    *policy.PolicyEngineConfig    `json:"policy"`
-		Providers []map[string]interface{}      `json:"providers"`
-		Roles     []*integration.RoleDefinition `json:"roles"`
-		Policies  []struct {
+		STS                    *sts.STSConfig                            `json:"sts"`
+		Policy                 *policy.PolicyEngineConfig                `json:"policy"`
+		SessionRevocationStore *integration.SessionRevocationStoreConfig `json:"sessionRevocationStore,omitempty"`
+		Providers              []map[string]interface{}                  `json:"providers"`
+		Roles                  []*integration.RoleDefinition             `json:"roles"`
+		Policies               []struct {
 			Name     string                 `json:"name"`
 			Document *policy.PolicyDocument `json:"document"`
 		} `json:"policies"`
@@ -1144,8 +1145,9 @@ func loadIAMManagerFromConfig(configPath string, filerAddressProvider func() str
 
 	// Create IAM configuration
 	iamConfig := &integration.IAMConfig{
-		STS:    configRoot.STS,
-		Policy: configRoot.Policy,
+		STS:                    configRoot.STS,
+		Policy:                 configRoot.Policy,
+		SessionRevocationStore: configRoot.SessionRevocationStore,
 		Roles: &integration.RoleStoreConfig{
 			StoreType: sts.StoreTypeMemory, // Use memory store for JSON config-based setup
 		},

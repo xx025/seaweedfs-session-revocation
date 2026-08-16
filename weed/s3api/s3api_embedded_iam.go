@@ -2585,6 +2585,36 @@ func (e *EmbeddedIamApi) ExecuteAction(ctx context.Context, values url.Values, s
 		return response, nil
 	}
 
+	if values.Get("Action") == actionRevokeSession {
+		if e.iam == nil || e.iam.iamIntegration == nil {
+			return nil, &iamError{Code: iam.ErrCodeServiceFailureException, Error: errors.New("IAM integration not configured")}
+		}
+		provider, ok := e.iam.iamIntegration.(IAMManagerProvider)
+		if !ok || provider.GetIAMManager() == nil {
+			return nil, &iamError{Code: iam.ErrCodeServiceFailureException, Error: errors.New("IAM manager not configured")}
+		}
+
+		sessionID := strings.TrimSpace(values.Get("SessionId"))
+		if sessionID == "" {
+			return nil, &iamError{Code: iam.ErrCodeInvalidInputException, Error: errors.New("SessionId is required")}
+		}
+		expiresAt, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(values.Get("ExpiresAt")))
+		if err != nil {
+			return nil, &iamError{Code: iam.ErrCodeInvalidInputException, Error: errors.New("ExpiresAt must be RFC3339")}
+		}
+		reason := strings.TrimSpace(values.Get("Reason"))
+		if len(reason) > 512 {
+			return nil, &iamError{Code: iam.ErrCodeInvalidInputException, Error: errors.New("Reason is too long")}
+		}
+
+		if err := provider.GetIAMManager().RevokeSession(ctx, sessionID, expiresAt, reason); err != nil {
+			return nil, &iamError{Code: iam.ErrCodeServiceFailureException, Error: err}
+		}
+		response := &iamlib.RevokeSessionResponse{}
+		response.SetRequestId(reqID)
+		return response, nil
+	}
+
 	s3cfg := &iam_pb.S3ApiConfiguration{}
 	if err := e.GetS3ApiConfiguration(s3cfg); err != nil && !errors.Is(err, filer_pb.ErrNotFound) {
 		return nil, &iamError{Code: s3err.GetAPIError(s3err.ErrInternalError).Code, Error: fmt.Errorf("failed to get s3 api configuration: %v", err)}

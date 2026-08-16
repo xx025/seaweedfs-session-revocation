@@ -371,10 +371,21 @@ type IAMConfig struct {
 	// if absent the manager defaults to an in-memory store hydrated from
 	// STS.Providers at boot.
 	OIDCProviders *OIDCProviderStoreConfig `json:"oidcProviderStore,omitempty"`
+
+	// SessionRevocationStore configures optional STS session revocation.
+	// When omitted, the existing stateless behavior is preserved.
+	SessionRevocationStore *SessionRevocationStoreConfig `json:"sessionRevocationStore,omitempty"`
 }
 
 // OIDCProviderStoreConfig holds OIDC provider store configuration.
 type OIDCProviderStoreConfig struct {
+	StoreType   string                 `json:"storeType"` // memory, filer
+	StoreConfig map[string]interface{} `json:"storeConfig,omitempty"`
+}
+
+// SessionRevocationStoreConfig holds configuration for the optional STS
+// session revocation blocklist.
+type SessionRevocationStoreConfig struct {
 	StoreType   string                 `json:"storeType"` // memory, filer
 	StoreConfig map[string]interface{} `json:"storeConfig,omitempty"`
 }
@@ -543,7 +554,29 @@ func (m *IAMManager) Initialize(config *IAMConfig, filerAddressProvider func() s
 		return fmt.Errorf("failed to initialize OIDC provider store: %w", err)
 	}
 
+	if err := m.initSessionRevocationStore(config.SessionRevocationStore); err != nil {
+		return fmt.Errorf("failed to initialize session revocation store: %w", err)
+	}
+
 	m.initialized = true
+	return nil
+}
+
+// initSessionRevocationStore configures optional session revocation. Keeping
+// this opt-in preserves the stateless default for existing deployments.
+func (m *IAMManager) initSessionRevocationStore(config *SessionRevocationStoreConfig) error {
+	if config == nil {
+		return nil
+	}
+
+	switch config.StoreType {
+	case "memory":
+		m.SetSessionRevocationStore(NewMemorySessionRevocationStore())
+	case "filer":
+		m.SetSessionRevocationStore(NewFilerSessionRevocationStore(config.StoreConfig, m.filerAddressProvider))
+	default:
+		return fmt.Errorf("unsupported session revocation store type: %s", config.StoreType)
+	}
 	return nil
 }
 
